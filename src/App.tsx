@@ -125,6 +125,13 @@ export default function App() {
     setSessions((prev) => prev.filter((s) => s.id !== sessionId));
   };
 
+  // Update historical session
+  const handleUpdateSession = (updatedSession: WorkoutSession) => {
+    setSessions((prev) =>
+      prev.map((s) => (s.id === updatedSession.id ? updatedSession : s))
+    );
+  };
+
   // Body Measurements Handlers
   const handleAddMeasurement = (newM: BodyMeasurement) => {
     setMeasurements((prev) => [newM, ...prev]);
@@ -165,14 +172,12 @@ export default function App() {
     }
   };
 
-  // Reset to demo data
-  const handleResetToDemo = () => {
+  // Clear all data
+  const handleClearAllData = () => {
     localStorage.removeItem('fullbody_pro_workouts_v1');
     localStorage.removeItem('fullbody_pro_measurements_v1');
-    const reloadedSessions = loadStoredSessions();
-    const reloadedMeasurements = loadStoredMeasurements();
-    setSessions(reloadedSessions);
-    setMeasurements(reloadedMeasurements);
+    setSessions([]);
+    setMeasurements([]);
   };
 
   const handleToggleSound = () => {
@@ -236,6 +241,7 @@ export default function App() {
           <WorkoutHistory
             sessions={sessions}
             onDeleteSession={handleDeleteSession}
+            onUpdateSession={handleUpdateSession}
             onStartFromHistorical={handleStartFromHistorical}
           />
         )}
@@ -246,7 +252,7 @@ export default function App() {
             measurements={measurements}
             userPrefs={userPrefs}
             onImportData={handleImportData}
-            onResetToDemo={handleResetToDemo}
+            onClearAllData={handleClearAllData}
           />
         )}
       </main>

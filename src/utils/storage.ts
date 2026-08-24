@@ -22,15 +22,20 @@ export const DEFAULT_PREFS: UserPrefs = {
 export function loadStoredSessions(): WorkoutSession[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return getInitialSeedSessions();
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      return parsed;
+      // Filter out any legacy demo/seed sessions
+      const cleanSessions = parsed.filter((s: WorkoutSession) => s && s.id && !s.id.startsWith('session-seed'));
+      if (cleanSessions.length !== parsed.length) {
+        saveStoredSessions(cleanSessions);
+      }
+      return cleanSessions;
     }
-    return getInitialSeedSessions();
+    return [];
   } catch (err) {
     console.error('Error loading sessions from storage:', err);
-    return getInitialSeedSessions();
+    return [];
   }
 }
 
@@ -45,15 +50,20 @@ export function saveStoredSessions(sessions: WorkoutSession[]): void {
 export function loadStoredMeasurements(): BodyMeasurement[] {
   try {
     const raw = localStorage.getItem(MEASUREMENTS_STORAGE_KEY);
-    if (!raw) return getInitialSeedMeasurements();
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      return parsed;
+      // Filter out any legacy demo/seed measurements
+      const cleanMeasurements = parsed.filter((m: BodyMeasurement) => m && m.id && !m.id.startsWith('meas-seed'));
+      if (cleanMeasurements.length !== parsed.length) {
+        saveStoredMeasurements(cleanMeasurements);
+      }
+      return cleanMeasurements;
     }
-    return getInitialSeedMeasurements();
+    return [];
   } catch (err) {
     console.error('Error loading measurements from storage:', err);
-    return getInitialSeedMeasurements();
+    return [];
   }
 }
 
@@ -371,258 +381,6 @@ export function validateAndParseImport(jsonString: string): {
   } catch (err) {
     return { success: false, error: `Error al leer el archivo JSON: ${(err as Error).message}` };
   }
-}
-
-/**
- * Initial seed body measurements so user sees progression graphs immediately
- */
-function getInitialSeedMeasurements(): BodyMeasurement[] {
-  const today = new Date();
-  const d1 = new Date(today);
-  d1.setDate(today.getDate() - 21);
-  const d2 = new Date(today);
-  d2.setDate(today.getDate() - 14);
-  const d3 = new Date(today);
-  d3.setDate(today.getDate() - 7);
-  const d4 = new Date(today);
-  d4.setDate(today.getDate() - 1);
-
-  const formatDate = (d: Date) => d.toISOString().split('T')[0];
-
-  return [
-    {
-      id: 'meas-seed-1',
-      date: formatDate(d1),
-      weightKg: 78.5,
-      chestCm: 101.5,
-      bicepsCm: 34.0,
-      abdomenCm: 86.0,
-      notes: 'Inicio de la rutina Full-Body (pesado en ayunas)'
-    },
-    {
-      id: 'meas-seed-2',
-      date: formatDate(d2),
-      weightKg: 78.0,
-      chestCm: 102.0,
-      bicepsCm: 34.4,
-      abdomenCm: 85.0,
-      notes: 'Fin de la semana 1. Cintura bajando, bíceps respondiendo.'
-    },
-    {
-      id: 'meas-seed-3',
-      date: formatDate(d3),
-      weightKg: 77.4,
-      chestCm: 102.8,
-      bicepsCm: 34.9,
-      abdomenCm: 84.0,
-      notes: 'Semana 2. Progresión visible en pecho y congestión de brazos.'
-    },
-    {
-      id: 'meas-seed-4',
-      date: formatDate(d4),
-      weightKg: 76.9,
-      chestCm: 103.5,
-      bicepsCm: 35.3,
-      abdomenCm: 83.0,
-      notes: 'Excelente tono muscular y reducción neta de cintura.'
-    }
-  ];
-}
-
-/**
- * Seed initial historical workouts so user sees charts immediately
- */
-function getInitialSeedSessions(): WorkoutSession[] {
-  const today = new Date();
-  
-  // Create 2 recent sample sessions (last Monday and Wednesday)
-  const d1 = new Date(today);
-  d1.setDate(today.getDate() - 5);
-  const d2 = new Date(today);
-  d2.setDate(today.getDate() - 2);
-
-  const formatDate = (d: Date) => d.toISOString().split('T')[0];
-
-  return [
-    {
-      id: 'session-seed-1',
-      date: formatDate(d1),
-      dayOfWeek: 'Lunes',
-      startTime: d1.toISOString(),
-      endTime: new Date(d1.getTime() + 42 * 60000).toISOString(),
-      durationMinutes: 42,
-      completed: true,
-      warmupCompleted: true,
-      stretchesCompleted: true,
-      generalNotes: 'Primera sesión. Muy buenas sensaciones en sentadillas.',
-      perceivedEffort: 8,
-      totalVolumeKg: 2840,
-      totalSets: 23,
-      exercises: [
-        {
-          exerciseId: 'ex-squat',
-          exerciseName: 'Sentadillas con mancuernas',
-          completed: true,
-          sets: [
-            { setNumber: 1, weightKg: 12, reps: 10, completed: true, rpe: 7 },
-            { setNumber: 2, weightKg: 12, reps: 10, completed: true, rpe: 7 },
-            { setNumber: 3, weightKg: 14, reps: 9, completed: true, rpe: 8 },
-            { setNumber: 4, weightKg: 14, reps: 8, completed: true, rpe: 9 }
-          ]
-        },
-        {
-          exerciseId: 'ex-pushups',
-          exerciseName: 'Flexiones',
-          completed: true,
-          sets: [
-            { setNumber: 1, weightKg: 0, reps: 12, completed: true, rpe: 7 },
-            { setNumber: 2, weightKg: 0, reps: 11, completed: true, rpe: 8 },
-            { setNumber: 3, weightKg: 0, reps: 10, completed: true, rpe: 9 }
-          ]
-        },
-        {
-          exerciseId: 'ex-row',
-          exerciseName: 'Remo con gomas',
-          completed: true,
-          sets: [
-            { setNumber: 1, weightKg: 10, reps: 12, completed: true, rpe: 7 },
-            { setNumber: 2, weightKg: 10, reps: 12, completed: true, rpe: 8 },
-            { setNumber: 3, weightKg: 10, reps: 11, completed: true, rpe: 8 }
-          ]
-        },
-        {
-          exerciseId: 'ex-military-press',
-          exerciseName: 'Press militar',
-          completed: true,
-          sets: [
-            { setNumber: 1, weightKg: 10, reps: 8, completed: true, rpe: 7 },
-            { setNumber: 2, weightKg: 10, reps: 8, completed: true, rpe: 8 },
-            { setNumber: 3, weightKg: 12, reps: 7, completed: true, rpe: 8 },
-            { setNumber: 4, weightKg: 12, reps: 6, completed: true, rpe: 9 }
-          ]
-        },
-        {
-          exerciseId: 'ex-plank',
-          exerciseName: 'Plancha abdominal',
-          completed: true,
-          sets: [
-            { setNumber: 1, weightKg: 0, reps: 35, completed: true, rpe: 7 },
-            { setNumber: 2, weightKg: 0, reps: 35, completed: true, rpe: 8 },
-            { setNumber: 3, weightKg: 0, reps: 30, completed: true, rpe: 9 }
-          ]
-        },
-        {
-          exerciseId: 'ex-romanian-deadlift',
-          exerciseName: 'Peso muerto rumano',
-          completed: true,
-          sets: [
-            { setNumber: 1, weightKg: 14, reps: 10, completed: true, rpe: 7 },
-            { setNumber: 2, weightKg: 14, reps: 10, completed: true, rpe: 7 },
-            { setNumber: 3, weightKg: 16, reps: 9, completed: true, rpe: 8 }
-          ]
-        },
-        {
-          exerciseId: 'ex-lateral-raises',
-          exerciseName: 'Elevaciones laterales',
-          completed: true,
-          sets: [
-            { setNumber: 1, weightKg: 4, reps: 15, completed: true, rpe: 7 },
-            { setNumber: 2, weightKg: 4, reps: 14, completed: true, rpe: 8 },
-            { setNumber: 3, weightKg: 4, reps: 13, completed: true, rpe: 9 }
-          ]
-        }
-      ]
-    },
-    {
-      id: 'session-seed-2',
-      date: formatDate(d2),
-      dayOfWeek: 'Miércoles',
-      startTime: d2.toISOString(),
-      endTime: new Date(d2.getTime() + 39 * 60000).toISOString(),
-      durationMinutes: 39,
-      completed: true,
-      warmupCompleted: true,
-      stretchesCompleted: true,
-      generalNotes: 'Progresión lograda en sentadillas y press militar.',
-      perceivedEffort: 8,
-      totalVolumeKg: 3120,
-      totalSets: 23,
-      exercises: [
-        {
-          exerciseId: 'ex-squat',
-          exerciseName: 'Sentadillas con mancuernas',
-          completed: true,
-          sets: [
-            { setNumber: 1, weightKg: 14, reps: 10, completed: true, rpe: 7 },
-            { setNumber: 2, weightKg: 14, reps: 10, completed: true, rpe: 8 },
-            { setNumber: 3, weightKg: 16, reps: 9, completed: true, rpe: 9 },
-            { setNumber: 4, weightKg: 16, reps: 8, completed: true, rpe: 9 }
-          ]
-        },
-        {
-          exerciseId: 'ex-pushups',
-          exerciseName: 'Flexiones',
-          completed: true,
-          sets: [
-            { setNumber: 1, weightKg: 0, reps: 12, completed: true, rpe: 7 },
-            { setNumber: 2, weightKg: 0, reps: 12, completed: true, rpe: 8 },
-            { setNumber: 3, weightKg: 0, reps: 11, completed: true, rpe: 9 }
-          ]
-        },
-        {
-          exerciseId: 'ex-row',
-          exerciseName: 'Remo con gomas',
-          completed: true,
-          sets: [
-            { setNumber: 1, weightKg: 12, reps: 12, completed: true, rpe: 7 },
-            { setNumber: 2, weightKg: 12, reps: 12, completed: true, rpe: 8 },
-            { setNumber: 3, weightKg: 12, reps: 11, completed: true, rpe: 8 }
-          ]
-        },
-        {
-          exerciseId: 'ex-military-press',
-          exerciseName: 'Press militar',
-          completed: true,
-          sets: [
-            { setNumber: 1, weightKg: 12, reps: 8, completed: true, rpe: 7 },
-            { setNumber: 2, weightKg: 12, reps: 8, completed: true, rpe: 8 },
-            { setNumber: 3, weightKg: 14, reps: 7, completed: true, rpe: 9 },
-            { setNumber: 4, weightKg: 14, reps: 6, completed: true, rpe: 9 }
-          ]
-        },
-        {
-          exerciseId: 'ex-plank',
-          exerciseName: 'Plancha abdominal',
-          completed: true,
-          sets: [
-            { setNumber: 1, weightKg: 0, reps: 40, completed: true, rpe: 7 },
-            { setNumber: 2, weightKg: 0, reps: 38, completed: true, rpe: 8 },
-            { setNumber: 3, weightKg: 0, reps: 35, completed: true, rpe: 9 }
-          ]
-        },
-        {
-          exerciseId: 'ex-romanian-deadlift',
-          exerciseName: 'Peso muerto rumano',
-          completed: true,
-          sets: [
-            { setNumber: 1, weightKg: 16, reps: 10, completed: true, rpe: 7 },
-            { setNumber: 2, weightKg: 16, reps: 10, completed: true, rpe: 8 },
-            { setNumber: 3, weightKg: 18, reps: 8, completed: true, rpe: 9 }
-          ]
-        },
-        {
-          exerciseId: 'ex-lateral-raises',
-          exerciseName: 'Elevaciones laterales',
-          completed: true,
-          sets: [
-            { setNumber: 1, weightKg: 5, reps: 14, completed: true, rpe: 8 },
-            { setNumber: 2, weightKg: 5, reps: 13, completed: true, rpe: 8 },
-            { setNumber: 3, weightKg: 5, reps: 12, completed: true, rpe: 9 }
-          ]
-        }
-      ]
-    }
-  ];
 }
 
 export function getSuggestedDayOfWeek(): DayOfWeek {

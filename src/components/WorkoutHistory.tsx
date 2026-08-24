@@ -5,30 +5,37 @@ import {
   Clock, 
   Dumbbell, 
   Trash2, 
+  Edit3,
   ChevronDown, 
   ChevronRight, 
   Sparkles, 
   Flame, 
   FileText,
   AlertTriangle,
-  Play
+  Play,
+  Check,
+  X,
+  Plus
 } from 'lucide-react';
-import { WorkoutSession, DayOfWeek } from '../types';
+import { WorkoutSession, DayOfWeek, ExerciseSessionLog, ExerciseSetLog } from '../types';
 
 interface WorkoutHistoryProps {
   sessions: WorkoutSession[];
   onDeleteSession: (sessionId: string) => void;
+  onUpdateSession: (session: WorkoutSession) => void;
   onStartFromHistorical: (session: WorkoutSession) => void;
 }
 
 export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({
   sessions,
   onDeleteSession,
+  onUpdateSession,
   onStartFromHistorical
 }) => {
   const [expandedSessionIds, setExpandedSessionIds] = useState<Record<string, boolean>>({});
   const [filterDay, setFilterDay] = useState<string>('all');
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
+  const [sessionToEdit, setSessionToEdit] = useState<WorkoutSession | null>(null);
 
   // Sort descending by date
   const sortedSessions = [...sessions].sort(
@@ -62,6 +69,82 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({
     }
   };
 
+  const handleOpenEdit = (session: WorkoutSession) => {
+    // Deep copy session so edits don't mutate state prematurely
+    setSessionToEdit(JSON.parse(JSON.stringify(session)));
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!sessionToEdit) return;
+
+    // Recalculate totalVolume and totalSets
+    let totalVol = 0;
+    let completedSetsCount = 0;
+
+    sessionToEdit.exercises.forEach((ex) => {
+      ex.sets.forEach((set) => {
+        if (set.completed) {
+          totalVol += Number(set.weightKg || 0) * Number(set.reps || 0);
+          completedSetsCount += 1;
+        }
+      });
+    });
+
+    const updated: WorkoutSession = {
+      ...sessionToEdit,
+      totalVolumeKg: totalVol,
+      totalSets: completedSetsCount
+    };
+
+    onUpdateSession(updated);
+    setSessionToEdit(null);
+  };
+
+  const handleUpdateSetField = (
+    exIdx: number,
+    setIdx: number,
+    field: keyof ExerciseSetLog,
+    val: any
+  ) => {
+    if (!sessionToEdit) return;
+    const updated = { ...sessionToEdit };
+    const set = updated.exercises[exIdx].sets[setIdx];
+    if (set) {
+      (set as any)[field] = val;
+    }
+    setSessionToEdit(updated);
+  };
+
+  const handleAddSet = (exIdx: number) => {
+    if (!sessionToEdit) return;
+    const updated = { ...sessionToEdit };
+    const ex = updated.exercises[exIdx];
+    const lastSet = ex.sets[ex.sets.length - 1];
+    const newSetNumber = ex.sets.length + 1;
+    const newSet: ExerciseSetLog = {
+      setNumber: newSetNumber,
+      weightKg: lastSet ? lastSet.weightKg : 0,
+      reps: lastSet ? lastSet.reps : 10,
+      completed: true,
+      rpe: 8
+    };
+    ex.sets.push(newSet);
+    setSessionToEdit(updated);
+  };
+
+  const handleRemoveSet = (exIdx: number, setIdx: number) => {
+    if (!sessionToEdit) return;
+    const updated = { ...sessionToEdit };
+    const ex = updated.exercises[exIdx];
+    ex.sets.splice(setIdx, 1);
+    // Renumber sets
+    ex.sets.forEach((s, idx) => {
+      s.setNumber = idx + 1;
+    });
+    setSessionToEdit(updated);
+  };
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
       {/* Header and Filter */}
@@ -72,7 +155,7 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({
             <h1 className="text-2xl font-bold text-white tracking-tight">Historial de Entrenamientos</h1>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Registro detallado de todas tus sesiones realizadas, cargas y notas.
+            Registro detallado de tus sesiones. Puedes editar o eliminar cualquier sesión manualmente.
           </p>
         </div>
 
@@ -104,7 +187,7 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({
             <div className="text-center">
               <h3 className="font-bold text-base text-white">¿Eliminar registro?</h3>
               <p className="text-xs text-slate-400 mt-1">
-                Esta acción eliminará la sesión seleccionada del historial local.
+                Esta acción eliminará la sesión seleccionada de forma permanente del dispositivo.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3 pt-2">
@@ -126,6 +209,243 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({
                 Eliminar
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Session Modal */}
+      {sessionToEdit && (
+        <div className="fixed inset-0 z-50 bg-[#0F172A]/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[#1E293B] border border-slate-700/50 rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl shadow-black/80 my-auto">
+            {/* Modal Header */}
+            <div className="p-5 sm:p-6 border-b border-slate-700/50 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold">
+                  <Edit3 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-white">Modificar Sesión de Entrenamiento</h3>
+                  <p className="text-xs text-slate-400">Edita fecha, cargas, repeticiones y notas del registro.</p>
+                </div>
+              </div>
+
+              <button
+                id="btn-close-edit-modal"
+                onClick={() => setSessionToEdit(null)}
+                className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleSaveEdit} className="p-5 sm:p-6 overflow-y-auto space-y-5">
+              {/* Top Details Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Fecha
+                  </label>
+                  <input
+                    type="date"
+                    id="edit-session-date"
+                    value={sessionToEdit.date}
+                    onChange={(e) => setSessionToEdit({ ...sessionToEdit, date: e.target.value })}
+                    required
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Día del Plan
+                  </label>
+                  <select
+                    id="edit-session-day"
+                    value={sessionToEdit.dayOfWeek}
+                    onChange={(e) => setSessionToEdit({ ...sessionToEdit, dayOfWeek: e.target.value as DayOfWeek })}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                  >
+                    <option value="Lunes">Lunes</option>
+                    <option value="Miércoles">Miércoles</option>
+                    <option value="Viernes">Viernes</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Duración (min)
+                  </label>
+                  <input
+                    type="number"
+                    id="edit-session-duration"
+                    value={sessionToEdit.durationMinutes || 0}
+                    onChange={(e) => setSessionToEdit({ ...sessionToEdit, durationMinutes: Math.max(1, parseInt(e.target.value) || 0) })}
+                    min="1"
+                    max="300"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* RPE and General Notes */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Esfuerzo Percibido (RPE 1-10)
+                  </label>
+                  <input
+                    type="number"
+                    id="edit-session-rpe"
+                    value={sessionToEdit.perceivedEffort || 8}
+                    onChange={(e) => setSessionToEdit({ ...sessionToEdit, perceivedEffort: Math.min(10, Math.max(1, parseInt(e.target.value) || 8)) })}
+                    min="1"
+                    max="10"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Notas de la sesión
+                  </label>
+                  <input
+                    type="text"
+                    id="edit-session-notes"
+                    value={sessionToEdit.generalNotes || ''}
+                    onChange={(e) => setSessionToEdit({ ...sessionToEdit, generalNotes: e.target.value })}
+                    placeholder="Ej. Buenas sensaciones en sentadillas..."
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:ring-2 focus:ring-indigo-500 outline-none placeholder:text-slate-600"
+                  />
+                </div>
+              </div>
+
+              {/* Warmup & Stretches checkboxes */}
+              <div className="flex flex-wrap gap-4 pt-1">
+                <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={sessionToEdit.warmupCompleted}
+                    onChange={(e) => setSessionToEdit({ ...sessionToEdit, warmupCompleted: e.target.checked })}
+                    className="rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                  />
+                  <span>Calentamiento articular completado</span>
+                </label>
+
+                <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={sessionToEdit.stretchesCompleted}
+                    onChange={(e) => setSessionToEdit({ ...sessionToEdit, stretchesCompleted: e.target.checked })}
+                    className="rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                  />
+                  <span>Estiramientos finales completados</span>
+                </label>
+              </div>
+
+              {/* Exercises & Sets Editor */}
+              <div className="space-y-4 pt-2 border-t border-slate-700/50">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Modificar Series y Cargas por Ejercicio
+                </h4>
+
+                <div className="space-y-3">
+                  {sessionToEdit.exercises.map((ex, exIdx) => (
+                    <div key={ex.exerciseId} className="bg-slate-900/90 border border-slate-700/50 p-4 rounded-2xl space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs text-white">{ex.exerciseName}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleAddSet(exIdx)}
+                          className="flex items-center gap-1 text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 px-2.5 py-1 rounded-xl bg-indigo-500/10 border border-indigo-500/20"
+                        >
+                          <Plus className="w-3 h-3" />
+                          <span>Añadir Serie</span>
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {ex.sets.map((set, setIdx) => (
+                          <div
+                            key={setIdx}
+                            className="bg-slate-950/70 border border-slate-800 p-2.5 rounded-xl flex items-center gap-2 text-xs"
+                          >
+                            <span className="font-mono text-[10px] text-slate-400 font-bold w-6">
+                              S{set.setNumber}
+                            </span>
+
+                            <div className="flex items-center gap-1.5 flex-1">
+                              <input
+                                type="number"
+                                step="0.5"
+                                min="0"
+                                max="500"
+                                value={set.weightKg}
+                                onChange={(e) => handleUpdateSetField(exIdx, setIdx, 'weightKg', parseFloat(e.target.value) || 0)}
+                                className="w-16 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white text-center font-mono focus:ring-1 focus:ring-indigo-500 outline-none"
+                                title="Peso (kg)"
+                              />
+                              <span className="text-[10px] text-slate-500 font-semibold">kg ×</span>
+
+                              <input
+                                type="number"
+                                min="0"
+                                max="1000"
+                                value={set.reps}
+                                onChange={(e) => handleUpdateSetField(exIdx, setIdx, 'reps', parseInt(e.target.value) || 0)}
+                                className="w-14 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white text-center font-mono focus:ring-1 focus:ring-indigo-500 outline-none"
+                                title="Repeticiones"
+                              />
+                              <span className="text-[10px] text-slate-500 font-semibold">reps</span>
+                            </div>
+
+                            <input
+                              type="checkbox"
+                              checked={set.completed}
+                              onChange={(e) => handleUpdateSetField(exIdx, setIdx, 'completed', e.target.checked)}
+                              title="Serie completada"
+                              className="rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                            />
+
+                            {ex.sets.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveSet(exIdx, setIdx)}
+                                className="text-slate-500 hover:text-rose-400 p-1 transition-colors"
+                                title="Eliminar serie"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Modal Footer Actions */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-700/50">
+                <button
+                  type="button"
+                  id="btn-cancel-edit-session"
+                  onClick={() => setSessionToEdit(null)}
+                  className="py-2.5 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-xs font-semibold text-slate-300 border border-slate-700 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  id="btn-save-edit-session"
+                  className="py-2.5 px-5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white shadow-xl shadow-indigo-600/30 transition-colors flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Guardar Cambios</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -196,11 +516,23 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({
                         e.stopPropagation();
                         onStartFromHistorical(session);
                       }}
-                      className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 hover:border-slate-600 transition-colors"
+                      className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 hover:border-slate-600 transition-colors"
                       title="Usar estas cargas como base"
                     >
                       <Play className="w-3 h-3 fill-current text-indigo-400" />
                       <span>Reanudar / Repetir</span>
+                    </button>
+
+                    <button
+                      id={`btn-edit-session-${session.id}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenEdit(session);
+                      }}
+                      className="p-2.5 rounded-2xl bg-slate-900 hover:bg-indigo-950/40 hover:text-indigo-400 border border-slate-700 text-slate-300 transition-colors"
+                      title="Modificar sesión"
+                    >
+                      <Edit3 className="w-4 h-4" />
                     </button>
 
                     <button

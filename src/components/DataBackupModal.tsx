@@ -33,7 +33,7 @@ interface DataBackupModalProps {
     measurements: BodyMeasurement[], 
     mode: 'merge' | 'replace'
   ) => void;
-  onResetToDemo: () => void;
+  onClearAllData: () => void;
 }
 
 export const DataBackupModal: React.FC<DataBackupModalProps> = ({
@@ -41,10 +41,11 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({
   measurements,
   userPrefs,
   onImportData,
-  onResetToDemo
+  onClearAllData
 }) => {
   const [copied, setCopied] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [importPreview, setImportPreview] = useState<{
     sessions: WorkoutSession[];
     measurements: BodyMeasurement[];
@@ -354,6 +355,42 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({
         </div>
       </div>
 
+      {/* Clear Data Confirmation Modal */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 z-50 bg-[#0F172A]/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#1E293B] border border-slate-700/50 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl shadow-black/60">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 mx-auto">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <div className="text-center">
+              <h3 className="font-bold text-base text-white">¿Borrar todos los registros?</h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Se eliminarán permanentemente todos los entrenamientos y mediciones corporales del almacenamiento local.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                id="btn-cancel-clear-all"
+                onClick={() => setShowClearConfirm(false)}
+                className="py-2.5 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-xs font-semibold text-slate-300 border border-slate-700 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                id="btn-confirm-clear-all"
+                onClick={() => {
+                  onClearAllData();
+                  setShowClearConfirm(false);
+                }}
+                className="py-2.5 px-4 rounded-2xl bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white shadow-xl shadow-rose-600/30 transition-colors"
+              >
+                Borrar Todo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Extra Utilities */}
       <div className="bg-[#1E293B] border border-slate-700/50 rounded-3xl p-6 flex flex-wrap items-center justify-between gap-4 shadow-xl shadow-black/20">
         <div className="flex items-center gap-3">
@@ -365,12 +402,12 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({
         </div>
 
         <button
-          id="btn-reset-demo-data"
-          onClick={onResetToDemo}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-medium text-slate-300 transition-colors"
+          id="btn-clear-all-data"
+          onClick={() => setShowClearConfirm(true)}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-slate-900 hover:bg-rose-950/40 hover:text-rose-400 border border-slate-700 text-xs font-medium text-slate-400 transition-colors"
         >
           <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
-          <span>Restablecer Datos de Ejemplo</span>
+          <span>Limpiar Todos los Registros</span>
         </button>
       </div>
     </div>
