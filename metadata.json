@@ -1,0 +1,6 @@
+{
+  "name": "FullBody Pro - Registro y Progresión",
+  "description": "Aplicación PWA para registro y progresión del plan Full-Body de 3 días con temporizadores, control de peso y medidas corporales (pecho, bíceps, abdomen), gráficos y exportación/importación.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
